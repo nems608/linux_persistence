@@ -1,0 +1,134 @@
+#!/usr/bin/python
+'''
+SimpleSecureHTTPServer.py - simple HTTP server supporting SSL.
+
+- replace fpem with the location of your .pem server file.
+- the default port is 443.
+
+usage: python SimpleSecureHTTPServer.py
+'''
+import socket, os, threading
+import time, hashlib, cgi, json
+from SocketServer import BaseServer, TCPServer, UDPServer, DatagramRequestHandler
+from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+from OpenSSL import SSL
+
+
+class SecureHTTPServer(HTTPServer):
+    def __init__(self, server_address, HandlerClass):
+        BaseServer.__init__(self, server_address, HandlerClass)
+        ctx = SSL.Context(SSL.SSLv23_METHOD)
+        #server.pem's location (containing the server private key and
+        #the server certificate).
+        fpem = 'server.pem'
+        ctx.use_privatekey_file (fpem)
+        ctx.use_certificate_file(fpem)
+        self.socket = SSL.Connection(ctx, socket.socket(self.address_family, self.socket_type))
+        self.server_bind()
+        self.server_activate()
+
+
+    def shutdown_request(self, request):
+        request.shutdown()
+
+
+class MyHandler(BaseHTTPRequestHandler):
+    def setup(self):
+        self.connection = self.request
+        self.rfile = socket._fileobject(self.request, "rb", self.rbufsize)
+        self.wfile = socket._fileobject(self.request, "wb", self.wbufsize)
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        try:
+            f = open(self.path[1:], 'r')
+            self.wfile.write(f.read())
+        except:
+            return
+
+    def do_POST(self):
+        form = cgi.FieldStorage(
+            fp=self.rfile,
+            headers=self.headers,
+            environ={'REQUEST_METHOD':'POST',
+             'CONTENT_TYPE':self.headers['Content-Type'],
+        })
+        check = checksum(self.path[1:])
+        if form['check'].value == check:
+            print('%d:%s:%s' % (time.time(), self.client_address[0], self.conn_type))
+        else:
+            print('%s  :  %s' % (form['check'].value, check))
+        self.send_response(200)
+        self.end_headers()
+
+    def log_message(self, format, *args):
+        return
+
+
+class HttpsHandler(MyHandler):
+    conn_type = 'https'
+
+class HttpHandler(MyHandler):
+    conn_type = 'http'
+
+class UdpHandler(DatagramRequestHandler):
+    def handle(self):
+        data = json.loads(self.request[0])
+        sock = self.request[1]
+        if 'Check' in data:
+            try:
+                expected = checksum(data['Path'])
+                if data['Check'] == expected:
+                    print('%d:%s:%s' % (time.time(), self.client_address[0], 'udp'))
+                else:
+                    print(data['Check'], expected)
+            except:
+                return
+        elif 'Path' in data:
+            try:
+                f = open(data['Path'], 'r')
+                res = f.read()
+                f.close()
+                sock.sendto(res, self.client_address)
+            except:
+                return
+
+
+def checksum(path):
+    try:
+        f = open(path, 'r')
+        sha = hashlib.sha1()
+        sha.update(f.read())
+        return sha.hexdigest()
+    except:
+        return 0
+
+
+def https_server():
+    server_address = ('', 443) # (address, port)
+    httpd = SecureHTTPServer(server_address, HttpsHandler)
+    sa = httpd.socket.getsockname()
+    httpd.serve_forever()
+
+
+def http_server():
+    httpd = TCPServer(("", 80), HttpHandler)
+    httpd.serve_forever()
+
+
+def udp_server():
+    server = UDPServer(('', 53), UdpHandler)
+    server.serve_forever()
+
+if __name__ == '__main__':
+    https = threading.Thread(target=https_server)
+    http = threading.Thread(target=http_server)
+    udp = threading.Thread(target=udp_server)
+    https.start()
+    http.start()
+    udp.start()
+    https.join()
+    http.join()
+    udp.join()
