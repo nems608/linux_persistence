@@ -14,6 +14,7 @@ def scoreboard():
     for host in valid_entries('ssh.out'):
         root = sum(1 for entry in host if entry[2] == '[root]')
         print('%s: Root: %d\tUser: %d' % (host[0][1], root, len(host) - root))
+    threading.Timer(60, scoreboard).start()
     
 
 def valid_entries(path):
@@ -34,5 +35,4 @@ if __name__ == '__main__':
     subprocess.call('python persist', shell=True)
     subprocess.call('stdbuf -oL ./solicitor > listeners.out', shell=True)
     subprocess.call('stdbuf -oL ./ssh_checker > ssh.out', shell=True)
-    timer = threading.Timer(60, scoreboard)
-    scoreboard()
+    threading.Timer(60, scoreboard).start()
