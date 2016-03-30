@@ -5,6 +5,7 @@ import time, random
 from threading import Timer
 from setproctitle import setproctitle
 import requests, socket, hashlib, json
+from SocketServer import TCPServer, StreamRequestHandler
 
 DOMAINS=[
   'johntheripper.com',
@@ -47,9 +48,15 @@ FILES=[
   'portfolio',
   'destination']
 
-def dns_beacon(name):
-    pass
+## Beacons ##
 
+def exec_beacons():
+    http_beacon('http://%s/%s' % get_random_domainfile())
+    time.sleep(random.random() * 5)
+    https_beacon('https://%s/%s' % get_random_domainfile())
+    time.sleep(random.random() * 5)
+    domain, f = get_random_domainfile()
+    udp_beacon(domain, f)
 
 def udp_beacon(host, path):
     try:
@@ -63,7 +70,6 @@ def udp_beacon(host, path):
         print(e)
         return
 
-
 def https_beacon(url):
     try:
         res = requests.get(url, verify=False)
@@ -72,7 +78,6 @@ def https_beacon(url):
     except:
         return
 
-
 def http_beacon(url):
     try:
         res = requests.get(url)
@@ -80,7 +85,41 @@ def http_beacon(url):
         requests.post(url, data = {'check':check})
     except:
         return
-    
+
+def get_random_domainfile():
+    global DOMAINS, FILES
+    domain = random.choice(DOMAINS)
+    f = random.choice(FILES)
+    return (domain, f)
+   
+
+## Listeners ##
+
+class ListenHandler(StreamRequestHandler):
+    def handle(self):
+        data = self.request.recv(10240)
+        print(data)
+        check = checksum(data)
+        print(check)
+        self.request.send(check)
+
+
+def spawn_listener(port):
+    child_pid = os.fork()
+    if child_pid == 0:  # Child
+        try:
+            server = TCPServer(('', port), ListenHandler)
+            server.serve_forever()
+        except:
+            return
+
+def spawn_listeners(start, end):
+    for i in range(3):
+        port = random.randrange(start, end)
+        spawn_listener(port)
+
+
+## Global ##
 
 def checksum(data): 
     s = hashlib.sha1()
@@ -96,21 +135,6 @@ def startproc(ring, actors):
     p.start()
 
 
-def exec_beacons():
-    http_beacon('http://%s/%s' % get_random_domainfile())
-    time.sleep(random.random() * 5)
-    https_beacon('https://%s/%s' % get_random_domainfile())
-    time.sleep(random.random() * 5)
-    domain, f = get_random_domainfile()
-    udp_beacon(domain, f)
-
-
-def get_random_domainfile():
-    global DOMAINS, FILES
-    domain = random.choice(DOMAINS)
-    f = random.choice(FILES)
-    return (domain, f)
-
-
 if __name__ == '__main__':
-    exec_beacons()
+#    exec_beacons()
+     spawn_listeners(10000, 13000)

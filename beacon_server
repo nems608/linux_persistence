@@ -45,6 +45,7 @@ class MyHandler(BaseHTTPRequestHandler):
         try:
             f = open(self.path[1:], 'r')
             self.wfile.write(f.read())
+            f.close()
         except:
             return
 
@@ -101,6 +102,7 @@ def checksum(path):
         f = open(path, 'r')
         sha = hashlib.sha1()
         sha.update(f.read())
+        f.close()
         return sha.hexdigest()
     except:
         return 0
