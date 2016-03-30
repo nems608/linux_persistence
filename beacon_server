@@ -59,8 +59,6 @@ class MyHandler(BaseHTTPRequestHandler):
         check = checksum(self.path[1:])
         if form['check'].value == check:
             print('%d:%s:%s' % (time.time(), self.client_address[0], self.conn_type))
-        else:
-            print('%s  :  %s' % (form['check'].value, check))
         self.send_response(200)
         self.end_headers()
 
@@ -83,8 +81,6 @@ class UdpHandler(DatagramRequestHandler):
                 expected = checksum(data['Path'])
                 if data['Check'] == expected:
                     print('%d:%s:%s' % (time.time(), self.client_address[0], 'udp'))
-                else:
-                    print(data['Check'], expected)
             except:
                 return
         elif 'Path' in data:

